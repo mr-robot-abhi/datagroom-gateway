@@ -24,6 +24,49 @@ class CsvUtils {
         });   
     }
 
+    // Auto-detect CSV file information (row count, column count)
+    static async autoDetectRangeInfo (file) {
+        return new Promise((resolve, reject) => {
+            let dataRowCount = 0; // Count of data rows (excluding header)
+            let columnCount = 0;
+            let hdrs = [];
+            let inputStream = Fs.createReadStream(file, 'utf8');
+            
+            inputStream
+                .pipe(new CsvReadableStream({ parseNumbers: true, parseBooleans: true, trim: true }))
+                .on('data', function (row) {
+                    dataRowCount++;
+                    // Update column count if this row has more columns
+                    if (Array.isArray(row) && row.length > columnCount) {
+                        columnCount = row.length;
+                    }
+                })
+                .on('end', function (data) {
+                    // Total rows = header row + data rows
+                    let totalRowCount = dataRowCount + (hdrs.length > 0 ? 1 : 0);
+                    logger.info(`Auto-detected CSV info: ${totalRowCount} total rows (${dataRowCount} data rows), ${columnCount} columns`);
+                    resolve({
+                        status: true,
+                        rowCount: totalRowCount,
+                        dataRowCount: dataRowCount,
+                        columnCount: columnCount,
+                        headers: hdrs
+                    });
+                })
+                .on('header', function (hdr) {
+                    logger.info(hdr, 'Header');
+                    hdrs = hdr;
+                    if (Array.isArray(hdr) && hdr.length > columnCount) {
+                        columnCount = hdr.length;
+                    }
+                })
+                .on('error', function (error) {
+                    logger.error(error, "Error reading CSV file");
+                    reject({ status: false, error: error.message || 'Error reading CSV file' });
+                });
+        });
+    }
+
     static async loadDataIntoDb (file, keys, dsName, dsUser) {
 
         return new Promise(async (resolve, reject) => {

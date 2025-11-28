@@ -70,4 +70,20 @@ router.post('/createDs', async (req, res, next) => {
     }
 });
 
+router.post('/autoDetectRangeInfo', async (req, res, next) => {
+    let request = req.body;
+    logger.info(request, "Incoming request in autoDetectRangeInfo");
+    try {
+        let result = await CsvUtils.autoDetectRangeInfo("uploads/" + request.fileName);
+        if (result.status) {
+            res.status(200).send(result);
+        } else {
+            res.status(400).send(result);
+        }
+    } catch (e) {
+        logger.error(e, "Exception in autoDetectRangeInfo");
+        res.status(415).send({ status: false, error: e.message || 'Exception in autoDetectRangeInfo' });
+    }
+});
+
 module.exports = router;
