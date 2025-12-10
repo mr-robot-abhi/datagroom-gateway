@@ -29,9 +29,15 @@ class DbAbstraction {
         // Check for MongoDB connection errors and exit gracefully if needed
         const isMongoServerSelectionError = err && (err.name === 'MongoServerSelectionError');
         const isMongoNetworkError = err && (err.name === 'MongoNetworkError');
-        if (isMongoServerSelectionError || isMongoNetworkError) {
+        if (isMongoServerSelectionError) {
             logger.error(err, 'Critical MongoDB connection error. Exiting process.');
-            process.exit(1);
+            // Give logger time to flush before exiting
+            setTimeout(() => {
+                process.exit(1);
+            }, 100);
+        } else if (isMongoNetworkError) {
+            // Log socket timeouts but don't crash the app
+            logger.error(err, 'MongoDB socket timeout occurred');
         }
     }
 
